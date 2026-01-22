@@ -313,13 +313,12 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
 
 const DebugConsole: React.FC<{ topNodes: VisualNode[]; totalResults: number }> = ({ topNodes, totalResults }) => {
     return (
-        <div className="absolute top-2 left-2 z-30 font-mono text-[10px] bg-black/80 border border-slate-800 p-3 w-64 text-[#bef264] pointer-events-none backdrop-blur-sm shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-1 mb-2">
-                <span className="uppercase font-black tracking-widest">Sys_Console</span>
-                <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
+        <div className="absolute top-24 left-6 z-30 font-mono text-[10px] bg-black/40 backdrop-blur-3xl border border-white/10 p-4 w-72 text-[#bef264] pointer-events-none shadow-2xl rounded-lg">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-3">
+                <span className="uppercase font-black tracking-[0.2em] text-slate-400">System_Trace</span>
+                <div className="flex gap-1.5 opacity-50">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
                 </div>
             </div>
 
@@ -374,13 +373,8 @@ export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
             {/* Debug Console Overlay */}
             <DebugConsole topNodes={topNodes} totalResults={nodes.length} />
 
-            {/* PCA Title Overlay */}
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.3em]">3D Embedding Visualization</h3>
-            </div>
-
             {/* Interactive Legend Overlay (Top Right) */}
-            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20 bg-black/80 border border-slate-800 p-3 md:p-4 space-y-2 pointer-events-none backdrop-blur-sm shadow-xl">
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20 bg-black/40 border border-white/10 p-3 md:p-4 space-y-2 pointer-events-none backdrop-blur-3xl rounded-lg shadow-2xl">
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-slate-500 shadow-[0_0_10px_rgba(148,163,184,0.5)]" />
                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Node</span>
@@ -389,7 +383,7 @@ export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
                     <div className="w-2 h-2 md:w-3 md:h-3 text-[#ef4444] font-black text-[10px] md:text-xs flex items-center justify-center">×</div>
                     <span className="text-[10px] font-bold text-[#ef4444] uppercase tracking-widest">Query</span>
                 </div>
-                <div className="flex items-center gap-2 md:gap-3 border-t border-slate-800 pt-2 mt-1">
+                <div className="flex items-center gap-2 md:gap-3 border-t border-white/10 pt-2 mt-1">
                     <div className="w-8 h-0.5 bg-gradient-to-r from-[#ef4444] to-transparent" />
                     <span className="text-[10px] font-bold text-[#ef4444] opacity-80 uppercase tracking-widest">Link</span>
                 </div>

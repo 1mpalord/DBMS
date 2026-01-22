@@ -317,24 +317,22 @@ export default function Home() {
                 </div>
               )}
               {activeTab === 'query' && (
-                <div className="space-y-8 h-full flex flex-col">
-                  <div className="max-w-3xl space-y-2 shrink-0">
-                    <h3 className="text-xl font-light text-white">Hybrid Search Mechanism</h3>
-                    <p className="text-sm text-slate-400">
-                      Combine <span className="text-[#bef264]">Dense Vectors</span> (Semantic) and
-                      <span className="text-blue-400"> Sparse Vectors</span> (Lexical) using the Alpha parameter.
+                <div className="h-full flex flex-col min-h-0 relative">
+                  <div className="space-y-2 mb-8 shrink-0">
+                    <h3 className="text-3xl font-light text-white tracking-tight">NEURAL_DECK</h3>
+                    <p className="text-sm font-mono text-slate-500 uppercase tracking-widest">
+                      Multi-modal Retrieval • <span className="text-[#bef264]">Active Latent Session</span>
                     </p>
                   </div>
 
-                  <div className="flex-1 flex flex-col gap-6 min-h-0">
-                    <SearchPanel
+                  <div className="flex-1 min-h-0 relative">
+                    <ResultsCanvas
+                      nodes={nodes}
+                      active={activeTab === 'query'}
                       onSearch={handleSearch}
                       isLoading={isLoading}
                       performance={performance}
                     />
-                    <div className="flex-1 relative min-h-[400px]">
-                      <ResultsCanvas nodes={nodes} active={activeTab === 'query'} />
-                    </div>
                   </div>
                 </div>
               )}

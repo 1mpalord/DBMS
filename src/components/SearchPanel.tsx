@@ -7,9 +7,10 @@ interface SearchPanelProps {
     onSearch: (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number) => void;
     isLoading: boolean;
     performance?: { timeMs: number };
+    floating?: boolean;
 }
 
-export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, isLoading, performance }) => {
+export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, isLoading, performance, floating }) => {
     const [query, setQuery] = useState('');
     const [searchType, setSearchType] = useState<'semantic' | 'lexical' | 'hybrid'>('semantic');
     const [alpha, setAlpha] = useState(0.7);
@@ -29,109 +30,104 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, isLoading, p
             });
     }, []);
 
-    const handleSearch = () => {
+    const handleSearch = (e?: React.FormEvent) => {
+        e?.preventDefault();
         if (!query || !selectedIndex) return;
         onSearch(query, searchType, selectedIndex, searchType === 'hybrid' ? alpha : undefined);
     };
 
+    if (!floating) return null;
+
     return (
-        <div className="atomic-card p-8 space-y-8 relative overflow-hidden group">
-            <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                        <Search className="w-5 h-5 text-[#bef264]" />
-                        Neural Retrieval
-                    </h2>
-                    <div className="h-0.5 w-8 bg-[#bef264] opacity-50" />
-                </div>
-                {performance && typeof performance.timeMs === 'number' && (
-                    <div className="font-mono text-[10px] text-[#bef264] bg-[#bef264]/5 px-3 py-1 border border-[#bef264]/20 tabular-nums">
-                        LATENCY: {performance.timeMs.toFixed(1)}MS
-                    </div>
-                )}
-            </div>
+        <>
+            {/* TOP HUD: Command Bar */}
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 pointer-events-none">
+                <form
+                    onSubmit={handleSearch}
+                    className="relative bg-black/40 backdrop-blur-2xl border border-white/5 rounded-full px-6 py-2 shadow-2xl flex items-center gap-4 group hover:border-[#bef264]/20 transition-all duration-500 pointer-events-auto"
+                >
+                    <Search className="w-5 h-5 text-slate-500 group-hover:text-[#bef264] transition-colors" />
 
-            <div className="space-y-6">
-                {/* Index Selector */}
-                <div>
-                    <label className="text-[10px] uppercase text-slate-500 block mb-2 flex items-center gap-1">
-                        <Database className="w-3 h-3" /> Target Index
-                    </label>
-                    <select
-                        className="w-full bg-black border border-slate-800 p-3 text-sm text-white outline-none focus:border-[#bef264] font-mono"
-                        value={selectedIndex}
-                        onChange={(e) => setSelectedIndex(e.target.value)}
-                    >
-                        {indexes.map(idx => (
-                            <option key={idx.name} value={idx.name}>{idx.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="flex gap-0">
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="SCAN LATENT SPACE..."
-                        className="tech-input flex-1 uppercase font-mono text-sm tracking-widest placeholder:opacity-30"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        className="bg-transparent flex-1 outline-none text-sm font-mono text-white tracking-widest uppercase placeholder:text-slate-700 py-2"
                     />
-                    <button
-                        onClick={handleSearch}
-                        disabled={isLoading || !query || !selectedIndex}
-                        className="tech-button border-l-0 bg-[#bef264] !text-black font-black"
+
+                    <div className="h-4 w-px bg-white/10" />
+
+                    <select
+                        className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none cursor-pointer uppercase tracking-wider max-w-[120px] truncate"
+                        value={selectedIndex}
+                        onChange={(e) => setSelectedIndex(e.target.value)}
                     >
-                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'EXEC_SEARCH'}
+                        {indexes.map(idx => (
+                            <option key={idx.name} value={idx.name} className="bg-[#0f172a] text-white underline">{idx.name.toUpperCase()}</option>
+                        ))}
+                    </select>
+
+                    <button
+                        type="submit"
+                        disabled={isLoading || !query || !selectedIndex}
+                        className={`p-2 rounded-full transition-all ${isLoading ? 'opacity-50' : 'hover:bg-[#bef264]/10 text-slate-400 hover:text-[#bef264]'
+                            }`}
+                    >
+                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Filter className="w-5 h-5" />}
                     </button>
-                </div>
 
-                <div className="grid grid-cols-3 gap-0 border border-slate-800">
-                    {(['semantic', 'lexical', 'hybrid'] as const).map((type) => (
-                        <button
-                            key={type}
-                            onClick={() => setSearchType(type)}
-                            className={`py-3 px-3 text-[10px] font-black uppercase tracking-widest transition-all border-r last:border-r-0 border-slate-800 ${searchType === type
-                                ? 'bg-[#bef264] text-black'
-                                : 'bg-transparent text-slate-500 hover:bg-slate-900 hover:text-slate-300'
-                                }`}
-                        >
-                            {type === 'semantic' ? 'COSINE (Semantic)' : type === 'lexical' ? 'BM25 (Lexical)' : 'HYBRID'}
-                        </button>
-                    ))}
-                </div>
-
-                {searchType === 'hybrid' && (
-                    <div className="space-y-4 pt-2 border-t border-slate-800 animate-in fade-in slide-in-from-top-2">
-                        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
-                            <span className="text-slate-500">Lexical_Bias</span>
-                            <span className="text-[#bef264]">Alpha: {alpha.toFixed(2)}</span>
-                            <span className="text-slate-500">Semantic_Bias</span>
+                    {/* Latency HUD Integrated */}
+                    {performance && (
+                        <div className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full ml-4 hidden lg:block">
+                            <div className="bg-black/60 backdrop-blur-xl border border-[#bef264]/20 px-3 py-1.5 rounded text-[9px] font-mono text-[#bef264] whitespace-nowrap">
+                                PING: {performance.timeMs.toFixed(0)}MS
+                            </div>
                         </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={alpha}
-                            onChange={(e) => setAlpha(parseFloat(e.target.value))}
-                            className="w-full h-1 bg-slate-800 appearance-none cursor-crosshair accent-[#bef264]"
-                        />
-                    </div>
-                )}
+                    )}
+                </form>
             </div>
 
-            <div className="pt-6 flex items-center justify-between text-[9px] text-slate-600 uppercase tracking-[0.2em] font-black border-t border-slate-800/50">
-                <div className="flex items-center gap-2">
-                    <Globe className="w-3 h-3" />
-                    {selectedIndex || 'No_Index_Selected'}
-                </div>
-                <div className="flex items-center gap-2">
-                    <Filter className="w-3 h-3" />
-                    Top_5_Rank
+            {/* BOTTOM HUD: Mode Dock */}
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-4 pointer-events-none">
+                <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-2xl p-4 shadow-3xl flex flex-col gap-4 pointer-events-auto">
+                    <div className="flex gap-2">
+                        {(['semantic', 'lexical', 'hybrid'] as const).map((type) => (
+                            <button
+                                key={type}
+                                type="button"
+                                onClick={() => setSearchType(type)}
+                                className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded transition-all ${searchType === type
+                                    ? 'bg-[#bef264] text-black shadow-[0_0_15px_rgba(190,242,100,0.3)]'
+                                    : 'text-slate-500 hover:bg-white/5'
+                                    }`}
+                            >
+                                {type === 'semantic' ? 'Cosine' : type === 'lexical' ? 'BM25' : 'Hybrid'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {searchType === 'hybrid' && (
+                        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-300">
+                            <div className="flex justify-between text-[8px] font-black tracking-[0.2em] text-slate-500 uppercase">
+                                <span>Lexical</span>
+                                <span className="text-[#bef264]">Alpha: {alpha.toFixed(2)}</span>
+                                <span>Semantic</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={alpha}
+                                onChange={(e) => setAlpha(parseFloat(e.target.value))}
+                                className="w-full h-1 bg-slate-800 appearance-none cursor-pointer accent-[#bef264] rounded-full"
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 
