@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateEmbedding, tokenize } from '@/lib/embeddings';
+import { generateEmbedding } from '@/lib/embeddings';
 
 export async function POST(req: NextRequest) {
     try {
-        const { text } = await req.json();
+        const { text, model } = await req.json();
+
         if (!text) {
             return NextResponse.json({ error: 'Text is required' }, { status: 400 });
         }
 
-        const start = performance.now();
-        const embedding = await generateEmbedding(text);
-        const tokens = await tokenize(text);
-        const end = performance.now();
+        // For now, only Xenova is supported locally. Others require API keys.
+        if (model && !model.startsWith('Xenova/')) {
+            return NextResponse.json({
+                error: 'Only Xenova models are supported without API key. OpenAI/Cohere coming soon.',
+                supported: ['Xenova/all-MiniLM-L6-v2']
+            }, { status: 400 });
+        }
 
-        return NextResponse.json({
-            embedding,
-            tokens,
-            timeMs: end - start,
-        });
+        console.log(`[API] Generating embedding for text: "${text.substring(0, 50)}..."`);
+        const embedding = await generateEmbedding(text);
+        console.log(`[API] Embedding generated (dim: ${embedding.length})`);
+
+        return NextResponse.json({ success: true, embedding, dimension: embedding.length });
     } catch (error: any) {
-        console.error('Embedding error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[API] Embedding generation failed:', error);
+        return NextResponse.json({ error: error.message || 'Embedding generation failed' }, { status: 500 });
     }
 }

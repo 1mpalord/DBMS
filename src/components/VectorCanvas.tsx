@@ -4,34 +4,62 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Text, Billboard, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Noise, Vignette, Scanline } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing';
+import { VisualNode } from '@/types';
 
 interface VectorNodeProps {
     position: [number, number, number];
     color: string;
     label: string;
     score?: number;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
     isSelected?: boolean;
     isTopRanked?: boolean;
     onClick?: () => void;
 }
 
-const VectorNode: React.FC<VectorNodeProps> = ({ position, color, label, score, metadata, isSelected, isTopRanked, onClick }) => {
-    // Fallback labels
-    const displayLabel = metadata?.label || metadata?.title || label || '';
+const VectorNode: React.FC<VectorNodeProps> = ({ position, color, label, score = 0, metadata, isSelected, isTopRanked, onClick }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    const { camera } = useThree();
+    const [isZoomedIn, setIsZoomedIn] = useState(false);
 
-    // Show label if selected (high score) OR if it's one of the top ranked search results
-    const showLabel = isSelected || isTopRanked;
+    // Check camera distance each frame for zoom-based label visibility
+    useFrame(() => {
+        if (meshRef.current) {
+            const nodePos = new THREE.Vector3(...position);
+            const distance = camera.position.distanceTo(nodePos);
+            setIsZoomedIn(distance < 12); // Show labels when camera is close
+        }
+    });
+
+    // Fallback labels
+    const displayLabel = (metadata?.label as string) || (metadata?.title as string) || label || '';
+
+    // Dynamic glow intensity based on score (0-1 maps to 1-8)
+    const glowIntensity = useMemo(() => {
+        if (isTopRanked || isSelected) {
+            return 2 + (score * 6); // Range 2-8 for top results
+        }
+        return 0.5 + (score * 2); // Range 0.5-2.5 for others
+    }, [score, isTopRanked, isSelected]);
+
+    // Node size scales slightly with score
+    const nodeSize = useMemo(() => {
+        if (isTopRanked || isSelected) return 0.15 + (score * 0.15); // 0.15 - 0.30
+        return 0.08 + (score * 0.06); // 0.08 - 0.14
+    }, [score, isTopRanked, isSelected]);
+
+    // Show label if: selected, top-ranked, OR zoomed in close to this node
+    const showLabel = isSelected || isTopRanked || (isZoomedIn && score > 0.3);
 
     return (
         <group position={position} onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
-            <mesh>
-                <sphereGeometry args={[showLabel ? 0.25 : 0.12, 16, 16]} />
+            <mesh ref={meshRef}>
+                <sphereGeometry args={[nodeSize, 16, 16]} />
                 <meshStandardMaterial
                     color={color}
                     emissive={color}
-                    emissiveIntensity={showLabel ? 5 : 1}
+                    emissiveIntensity={glowIntensity}
                     toneMapped={false}
                 />
             </mesh>
@@ -39,10 +67,10 @@ const VectorNode: React.FC<VectorNodeProps> = ({ position, color, label, score, 
             {displayLabel && showLabel && (
                 <Billboard
                     follow={true}
-                    position={[0, 0.4, 0]}
+                    position={[0, nodeSize + 0.2, 0]}
                 >
                     <Text
-                        fontSize={0.2}
+                        fontSize={0.18}
                         color="white"
                         anchorX="center"
                         anchorY="middle"
@@ -102,31 +130,31 @@ const PCAGrid = () => {
     );
 };
 
-const NodeDetailPanel: React.FC<{ node: any; onClose: () => void }> = ({ node, onClose }) => {
+const NodeDetailPanel: React.FC<{ node: VisualNode; onClose: () => void }> = ({ node, onClose }) => {
     if (!node) return null;
 
     return (
         <Html position={[0, 0, 0]} center style={{ pointerEvents: 'none' }}>
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 bg-black/90 border border-[#bef264] p-6 text-[#e2e8f0] font-mono z-50 pointer-events-auto shadow-[0_0_50px_rgba(190,242,100,0.2)] backdrop-blur-md">
                 <div className="flex justify-between items-start mb-4 border-b border-slate-800 pb-2">
-                    <h3 className="text-[#bef264] font-black uppercase text-sm tracking-widest">{node.metadata?.title || node.id.substring(0, 8)}</h3>
+                    <h3 className="text-[#bef264] font-black uppercase text-sm tracking-widest">{(node.metadata?.title as string) || node.id.substring(0, 8)}</h3>
                     <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-slate-500 hover:text-white text-xs">[CLOSE]</button>
                 </div>
 
                 <div className="space-y-3 text-xs">
                     <div className="grid grid-cols-[80px_1fr] gap-2">
                         <span className="text-slate-500 uppercase tracking-wider">Score</span>
-                        <span className="text-[#bef264] font-bold">{(node.score * 100).toFixed(2)}%</span>
+                        <span className="text-[#bef264] font-bold">{((node.score || 0) * 100).toFixed(2)}%</span>
                     </div>
                     <div className="grid grid-cols-[80px_1fr] gap-2">
                         <span className="text-slate-500 uppercase tracking-wider">ID</span>
                         <span className="text-slate-300 break-all">{node.id}</span>
                     </div>
-                    {node.metadata?.text && (
+                    {typeof node.metadata?.text === 'string' && (
                         <div className="mt-4 pt-4 border-t border-slate-800">
                             <span className="text-slate-500 uppercase tracking-wider block mb-2">Content Payload</span>
                             <p className="text-slate-300 leading-relaxed max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                "{node.metadata.text}"
+                                &quot;{(node.metadata.text as string)}&quot;
                             </p>
                         </div>
                     )}
@@ -136,19 +164,19 @@ const NodeDetailPanel: React.FC<{ node: any; onClose: () => void }> = ({ node, o
     );
 };
 
-const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
+const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) => {
     const markerGroupRef = useRef<THREE.Group>(null);
     const pulseRef = useRef<THREE.Group>(null);
-    const queryPosRef = useRef(new THREE.Vector3(0, 0, 0));
-    const [animState, setAnimState] = useState<'IDLE' | 'FLYING' | 'EXTENDING'>('IDLE');
+    const queryPosRef = useRef(new THREE.Vector3(0, 12, 0)); // Start from top
+    const [animState, setAnimState] = useState<'WAITING' | 'FLYING' | 'EXTENDING' | 'COMPLETE'>('WAITING');
     const [lineProgress, setLineProgress] = useState(0);
+    const prevNodesLenRef = useRef(0);
 
-    // 1. Find Top 3 Nodes
+    // 1. Find Top 5 Nodes (no threshold - always show top 5 if available)
     const topNodes = useMemo(() => {
         return [...nodes]
             .sort((a, b) => (b.score || 0) - (a.score || 0))
-            .slice(0, 3)
-            .filter(n => (n.score || 0) > 0.5);
+            .slice(0, 5); // Always take top 5, no score threshold
     }, [nodes]);
 
     // 2. Calculate Target Centroid
@@ -165,29 +193,47 @@ const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
         return new THREE.Vector3(x / topNodes.length, y / topNodes.length, z / topNodes.length);
     }, [topNodes]);
 
-    // Trigger Animation Sequence when Target Changes
+    // Trigger Animation Sequence when NEW results arrive (2 second delay)
     useEffect(() => {
-        if (topNodes.length > 0) {
-            setAnimState('FLYING');
+        // Only trigger on new results (nodes length changed from 0 to >0, or new search)
+        if (nodes.length > 0 && prevNodesLenRef.current !== nodes.length) {
+            // Reset position to start point
+            queryPosRef.current.set(0, 12, 0);
             setLineProgress(0);
-        } else {
-            setAnimState('IDLE');
+            setAnimState('WAITING');
+
+            // After 2s delay, start flying
+            const timeout = setTimeout(() => {
+                setAnimState('FLYING');
+            }, 2000);
+
+            prevNodesLenRef.current = nodes.length;
+            return () => clearTimeout(timeout);
+        } else if (nodes.length === 0) {
+            setAnimState('WAITING');
+            prevNodesLenRef.current = 0;
         }
-    }, [targetCentroid]);
+    }, [nodes.length, nodes]);
 
     useFrame(({ clock }, delta) => {
         const queryPos = queryPosRef.current;
 
         if (animState === 'FLYING') {
-            const speed = 5.0 * delta; // Faster flight
+            const speed = 3.0 * delta; // Smooth flight speed
             queryPos.lerp(targetCentroid, speed);
+
+            // Check if close enough to target
             if (queryPos.distanceTo(targetCentroid) < 0.1) {
                 queryPos.copy(targetCentroid);
                 setAnimState('EXTENDING');
             }
         }
         else if (animState === 'EXTENDING') {
-            setLineProgress(prev => Math.min(prev + (delta * 1.5), 1));
+            setLineProgress(prev => {
+                const newVal = Math.min(prev + (delta * 1.2), 1);
+                if (newVal >= 1) setAnimState('COMPLETE');
+                return newVal;
+            });
         }
 
         // Update the marker group position directly
@@ -195,14 +241,15 @@ const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
             markerGroupRef.current.position.copy(queryPos);
         }
 
-        // Pulse animation
+        // Pulse animation (always active)
         if (pulseRef.current) {
             const t = clock.getElapsedTime();
-            const scale = 1 + Math.sin(t * 4) * 0.15;
+            const scale = 1 + Math.sin(t * 4) * 0.2;
             pulseRef.current.scale.setScalar(scale);
         }
     });
 
+    // No results - show faded X at origin
     if (topNodes.length === 0) {
         return (
             <Billboard position={[0, 0, 0]}>
@@ -217,11 +264,11 @@ const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
             <group ref={markerGroupRef}>
                 {/* Main Sphere */}
                 <mesh>
-                    <sphereGeometry args={[0.35, 32, 32]} />
+                    <sphereGeometry args={[0.4, 32, 32]} />
                     <meshStandardMaterial
                         color="#ef4444"
                         emissive="#ef4444"
-                        emissiveIntensity={3}
+                        emissiveIntensity={animState === 'FLYING' ? 5 : 3}
                         toneMapped={false}
                     />
                 </mesh>
@@ -229,24 +276,26 @@ const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
                 {/* Pulsing outer ring */}
                 <group ref={pulseRef}>
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[0.5, 0.6, 32]} />
-                        <meshBasicMaterial color="#ef4444" transparent opacity={0.4} side={THREE.DoubleSide} />
+                        <ringGeometry args={[0.55, 0.7, 32]} />
+                        <meshBasicMaterial color="#ef4444" transparent opacity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                 </group>
 
                 {/* Label */}
-                <Billboard position={[0, 0.8, 0]}>
-                    <Text fontSize={0.25} color="#ef4444">QUERY</Text>
+                <Billboard position={[0, 1, 0]}>
+                    <Text fontSize={0.3} color="#ef4444" outlineWidth={0.02} outlineColor="#000">
+                        {animState === 'WAITING' ? 'SCANNING...' : animState === 'FLYING' ? 'LOCATING...' : 'QUERY'}
+                    </Text>
                 </Billboard>
             </group>
 
-            {/* Glowing Connection Lines */}
-            {animState !== 'FLYING' && topNodes.map((node, i) => (
+            {/* Glowing Connection Lines - show during EXTENDING and COMPLETE */}
+            {(animState === 'EXTENDING' || animState === 'COMPLETE') && topNodes.map((node, i) => (
                 <Line
                     key={`link-${i}`}
                     points={[
-                        queryPosRef.current,
-                        new THREE.Vector3().lerpVectors(queryPosRef.current, new THREE.Vector3(...node.position), lineProgress)
+                        targetCentroid,
+                        new THREE.Vector3().lerpVectors(targetCentroid, new THREE.Vector3(...node.position), lineProgress)
                     ]}
                     color="#ef4444"
                     lineWidth={2}
@@ -255,14 +304,14 @@ const MagnetLinkVisualization: React.FC<{ nodes: any[] }> = ({ nodes }) => {
                     dashSize={1}
                     gapSize={0.5}
                     transparent
-                    opacity={0.4 * lineProgress}
+                    opacity={0.6 * lineProgress}
                 />
             ))}
         </group>
     );
 };
 
-const DebugConsole: React.FC<{ topNodes: any[] }> = ({ topNodes }) => {
+const DebugConsole: React.FC<{ topNodes: VisualNode[]; totalResults: number }> = ({ topNodes, totalResults }) => {
     return (
         <div className="absolute top-2 left-2 z-30 font-mono text-[10px] bg-black/80 border border-slate-800 p-3 w-64 text-[#bef264] pointer-events-none backdrop-blur-sm shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-1 mb-2">
@@ -283,11 +332,13 @@ const DebugConsole: React.FC<{ topNodes: any[] }> = ({ topNodes }) => {
                         <p className="text-white mt-2 border-l-2 border-[#bef264] pl-2 font-bold">{'>'} MATCH_FOUND ({topNodes.length})</p>
                         {topNodes.map((node, i) => (
                             <div key={node.id} className="pl-4 text-xs">
-                                <span className="text-slate-500">#{i + 1}</span> <span className="text-white">{node.metadata?.title || node.id}</span>
-                                <span className="block text-slate-600 ml-4">CONFIDENCE: {(node.score * 100).toFixed(1)}%</span>
+                                <span className="text-slate-500">#{i + 1}</span> <span className="text-white">{(node.metadata?.title as string) || node.id}</span>
+                                <span className="block text-slate-600 ml-4">CONFIDENCE: {((node.score || 0) * 100).toFixed(1)}%</span>
                             </div>
                         ))}
                     </>
+                ) : totalResults === 0 ? (
+                    <p className="text-red-500 mt-2 border-l-2 border-red-500 pl-2 font-bold animate-pulse">{'>'} NO_RESULTS_FOUND</p>
                 ) : (
                     <p className="text-slate-600 mt-2">{'>'} waiting for query input...</p>
                 )}
@@ -301,18 +352,17 @@ const DebugConsole: React.FC<{ topNodes: any[] }> = ({ topNodes }) => {
     );
 };
 interface VectorCanvasProps {
-    nodes: { id: string; position: [number, number, number]; metadata?: any; score?: number }[];
+    nodes: VisualNode[];
 }
 
 export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
-    const [selectedNode, setSelectedNode] = useState<any>(null);
+    const [selectedNode, setSelectedNode] = useState<VisualNode | null>(null);
 
-    // Calculate top nodes at top level to pass to both Visualization and Console
+    // Calculate top nodes at top level to pass to both Visualization and Console (no threshold)
     const topNodes = useMemo(() => {
         return [...nodes]
             .sort((a, b) => (b.score || 0) - (a.score || 0))
-            .slice(0, 3)
-            .filter(n => (n.score || 0) > 0.5);
+            .slice(0, 5); // Always take top 5
     }, [nodes]);
 
     const topNodeIds = useMemo(() => new Set(topNodes.map(n => n.id)), [topNodes]);
@@ -322,7 +372,7 @@ export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
             <div className="absolute inset-0 grain-overlay z-10 pointer-events-none" />
 
             {/* Debug Console Overlay */}
-            <DebugConsole topNodes={topNodes} />
+            <DebugConsole topNodes={topNodes} totalResults={nodes.length} />
 
             {/* PCA Title Overlay */}
             <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none">
@@ -392,7 +442,7 @@ export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
                                 key={node.id}
                                 position={node.position}
                                 color={color}
-                                label={node.metadata?.title || node.metadata?.label || ''}
+                                label={(node.metadata?.title as string) || (node.metadata?.label as string) || ''}
                                 score={node.score}
                                 metadata={node.metadata}
                                 isSelected={isSelected}
