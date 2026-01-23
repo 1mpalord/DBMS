@@ -29,7 +29,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>('introduction');
   const [selectedIndex, setSelectedIndex] = useState<string>('vector-demo');
 
-  // Tab 5 State
+  // Global Multi-Tenancy State
+  const [selectedNamespace, setSelectedNamespace] = useState<string>('');
   const [nodes, setNodes] = useState<VisualNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [performance, setPerformance] = useState<{ timeMs: number } | undefined>();
@@ -49,16 +50,26 @@ export default function Home() {
       .catch(err => console.error('Failed to fetch indexes:', err));
   }, [selectedIndex]);
 
-  const handleIndexChange = (newIndex: string) => setSelectedIndex(newIndex);
+  const handleIndexChange = (newIndex: string) => {
+    setSelectedIndex(newIndex);
+    setSelectedNamespace(''); // Reset namespace when index changes
+  };
 
-  const handleSearch = async (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number) => {
+  const handleSearch = async (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number, ns?: string) => {
     setIsLoading(true);
     setPerformance(undefined);
     try {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, searchType: type, alpha, topK: 100, indexName, namespace: '' }),
+        body: JSON.stringify({
+          query,
+          searchType: type,
+          alpha,
+          topK: 100,
+          indexName,
+          namespace: ns || selectedNamespace
+        }),
       });
 
       if (!res.ok) throw new Error(`Search failed: ${res.statusText}`);
@@ -313,7 +324,11 @@ export default function Home() {
                       or generate vectors yourself and send them (Bring Your Own).
                     </p>
                   </div>
-                  <PayloadBuilder />
+                  <PayloadBuilder
+                    selectedIndex={selectedIndex}
+                    globalNamespace={selectedNamespace}
+                    onNamespaceChange={setSelectedNamespace}
+                  />
                 </div>
               )}
               {activeTab === 'query' && (
@@ -332,6 +347,9 @@ export default function Home() {
                       onSearch={handleSearch}
                       isLoading={isLoading}
                       performance={performance}
+                      selectedIndex={selectedIndex}
+                      selectedNamespace={selectedNamespace}
+                      onNamespaceChange={setSelectedNamespace}
                     />
                   </div>
                 </div>

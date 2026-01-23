@@ -154,3 +154,36 @@ export const upsertRecord = async (
     throw error;
   }
 };
+
+export const upsertRecords = async (
+  indexName: string,
+  namespace: string,
+  records: { id: string, metadata: any, values: number[] }[]
+) => {
+  if (!process.env.PINECONE_API_KEY) return;
+  try {
+    const idx = pinecone.index(indexName).namespace(namespace);
+
+    // Pinecone allows up to 1000 records per upsert request
+    // We send them as is, assuming values are already provided (embedded)
+    await idx.upsert(records);
+
+    console.log(`📥 [Pinecone] Batch upserted ${records.length} records to ${indexName}::${namespace}`);
+    return true;
+  } catch (error) {
+    console.error(`Error batch upserting to ${indexName}:`, error);
+    throw error;
+  }
+};
+export const deleteNamespace = async (indexName: string, namespace: string) => {
+  if (!process.env.PINECONE_API_KEY) return;
+  try {
+    const idx = pinecone.index(indexName).namespace(namespace);
+    await idx.deleteAll();
+    console.log(`🗑️ [Pinecone] Namespace '${namespace}' deleted in index '${indexName}'.`);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting namespace ${namespace} in ${indexName}:`, error);
+    throw error;
+  }
+};

@@ -4,36 +4,47 @@ import React, { useState, useEffect } from 'react';
 import { Search, Globe, Filter, Loader2, Database } from 'lucide-react';
 
 interface SearchPanelProps {
-    onSearch: (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number) => void;
+    onSearch: (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number, ns?: string) => void;
     isLoading: boolean;
     performance?: { timeMs: number };
     floating?: boolean;
+    selectedIndex: string;
+    selectedNamespace: string;
+    onNamespaceChange: (ns: string) => void;
 }
 
-export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, isLoading, performance, floating }) => {
+export const SearchPanel: React.FC<SearchPanelProps> = ({
+    onSearch,
+    isLoading,
+    performance,
+    floating,
+    selectedIndex,
+    selectedNamespace,
+    onNamespaceChange
+}) => {
     const [query, setQuery] = useState('');
     const [searchType, setSearchType] = useState<'semantic' | 'lexical' | 'hybrid'>('semantic');
     const [alpha, setAlpha] = useState(0.7);
 
-    // Index Selection
-    const [indexes, setIndexes] = useState<any[]>([]);
-    const [selectedIndex, setSelectedIndex] = useState('');
+    // Namespaces
+    const [namespaces, setNamespaces] = useState<Record<string, number>>({});
 
-    // Fetch indexes on mount
+    // Fetch available namespaces for the selected index
     useEffect(() => {
-        fetch('/api/pinecone/list-indexes')
+        if (!selectedIndex) return;
+        fetch(`/api/pinecone/list-namespaces?indexName=${selectedIndex}`)
             .then(res => res.json())
             .then(data => {
-                const list = data.indexes || [];
-                setIndexes(list);
-                if (list.length > 0) setSelectedIndex(list[0].name);
-            });
-    }, []);
+                const stats = data.namespaces || {};
+                setNamespaces(stats);
+            })
+            .catch(err => console.error('Error fetching namespaces:', err));
+    }, [selectedIndex]);
 
     const handleSearch = (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!query || !selectedIndex) return;
-        onSearch(query, searchType, selectedIndex, searchType === 'hybrid' ? alpha : undefined);
+        onSearch(query, searchType, selectedIndex, searchType === 'hybrid' ? alpha : undefined, selectedNamespace);
     };
 
     if (!floating) return null;
@@ -56,17 +67,34 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, isLoading, p
                         className="bg-transparent flex-1 outline-none text-sm font-mono text-white tracking-widest uppercase placeholder:text-slate-700 py-2"
                     />
 
+                    <div className="flex items-center gap-2">
+                        <Database className="w-3 h-3 text-[#bef264]/40" />
+                        <span className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none uppercase tracking-wider max-w-[120px] truncate">
+                            {selectedIndex.toUpperCase()}
+                        </span>
+                    </div>
+
                     <div className="h-4 w-px bg-white/10" />
 
-                    <select
-                        className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none cursor-pointer uppercase tracking-wider max-w-[120px] truncate"
-                        value={selectedIndex}
-                        onChange={(e) => setSelectedIndex(e.target.value)}
-                    >
-                        {indexes.map(idx => (
-                            <option key={idx.name} value={idx.name} className="bg-[#0f172a] text-white underline">{idx.name.toUpperCase()}</option>
-                        ))}
-                    </select>
+                    <div className="flex items-center gap-2 group/ns">
+                        <Globe className={`w-3 h-3 transition-colors ${selectedNamespace ? 'text-[#bef264]' : 'text-slate-500'}`} />
+                        <select
+                            className="bg-transparent text-[10px] font-mono text-white/70 hover:text-white outline-none cursor-pointer uppercase tracking-wider max-w-[100px] truncate"
+                            value={selectedNamespace}
+                            onChange={(e) => onNamespaceChange(e.target.value)}
+                        >
+                            <option value="" className="bg-[#0f172a] text-white underline">
+                                DEFAULT {namespaces[''] !== undefined ? `(${namespaces['']} records)` : namespaces['default'] !== undefined ? `(${namespaces['default']} records)` : ''}
+                            </option>
+                            {Object.entries(namespaces)
+                                .filter(([ns]) => ns !== '' && ns !== 'default')
+                                .map(([ns, count]) => (
+                                    <option key={ns} value={ns} className="bg-[#0f172a] text-white underline">
+                                        {ns.toUpperCase()} ({count} records)
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
 
                     <button
                         type="submit"

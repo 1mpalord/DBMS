@@ -10,12 +10,24 @@ import { SearchPanel } from '@/components/SearchPanel';
 interface ResultsCanvasProps {
     nodes: VisualNode[];
     active: boolean;
-    onSearch: (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number) => void;
+    onSearch: (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number, ns?: string) => void;
     isLoading: boolean;
     performance?: { timeMs: number };
+    selectedIndex: string;
+    selectedNamespace: string;
+    onNamespaceChange: (ns: string) => void;
 }
 
-export function ResultsCanvas({ nodes, active, onSearch, isLoading, performance }: ResultsCanvasProps) {
+export function ResultsCanvas({
+    nodes,
+    active,
+    onSearch,
+    isLoading,
+    performance,
+    selectedIndex,
+    selectedNamespace,
+    onNamespaceChange
+}: ResultsCanvasProps) {
     if (!active) return null;
 
     return (
@@ -26,6 +38,9 @@ export function ResultsCanvas({ nodes, active, onSearch, isLoading, performance 
                 isLoading={isLoading}
                 performance={performance}
                 floating={true}
+                selectedIndex={selectedIndex}
+                selectedNamespace={selectedNamespace}
+                onNamespaceChange={onNamespaceChange}
             />
 
             {/* Bottom HUD: Global Context & Stats */}

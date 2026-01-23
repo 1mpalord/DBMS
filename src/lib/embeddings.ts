@@ -25,6 +25,20 @@ export const generateEmbedding = async (text: string): Promise<number[]> => {
     return Array.from(output.data);
 };
 
+export const generateEmbeddings = async (texts: string[]): Promise<number[][]> => {
+    const extract = await getExtractor();
+    const results: number[][] = [];
+
+    // Xenova/Transformers.js can handle arrays directly in some versions, 
+    // but for stability and progress tracking potential, we loop or use Promise.all
+    // Here we'll do them sequentially or in small chunks if needed, but for local miniLM, sequential is fast enough.
+    for (const text of texts) {
+        const output = await extract(text, { pooling: 'mean', normalize: true });
+        results.push(Array.from(output.data));
+    }
+    return results;
+};
+
 export const tokenize = async (text: string): Promise<string[]> => {
     const extract = await getExtractor();
     // @ts-expect-error - Accessing internal tokenizer properties

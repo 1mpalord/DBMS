@@ -193,27 +193,40 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
         return new THREE.Vector3(x / topNodes.length, y / topNodes.length, z / topNodes.length);
     }, [topNodes]);
 
-    // Trigger Animation Sequence when NEW results arrive (2 second delay)
+    // Trigger Animation Sequence when NEW results arrive
+    const prevTopNodeIdRef = useRef<string | null>(null);
+
     useEffect(() => {
-        // Only trigger on new results (nodes length changed from 0 to >0, or new search)
-        if (nodes.length > 0 && prevNodesLenRef.current !== nodes.length) {
-            // Reset position to start point
-            queryPosRef.current.set(0, 12, 0);
-            setLineProgress(0);
-            setAnimState('WAITING');
+        if (nodes.length > 0) {
+            const topNodeId = nodes[0]?.id;
 
-            // After 2s delay, start flying
-            const timeout = setTimeout(() => {
-                setAnimState('FLYING');
-            }, 2000);
+            // Check if findings actually changed (IDs check)
+            if (topNodeId !== prevTopNodeIdRef.current) {
+                // If it's first time or we were waiting, start from top
+                // Otherwise, keep current position for a smooth move
+                if (animState === 'WAITING' && queryPosRef.current.y === 12) {
+                    queryPosRef.current.set(0, 12, 0);
+                }
 
-            prevNodesLenRef.current = nodes.length;
-            return () => clearTimeout(timeout);
+                setLineProgress(0);
+                setAnimState('WAITING');
+
+                // Start moving slightly faster on second tries
+                const delay = prevTopNodeIdRef.current ? 800 : 2000;
+                const timeout = setTimeout(() => {
+                    setAnimState('FLYING');
+                }, delay);
+
+                prevTopNodeIdRef.current = topNodeId;
+                prevNodesLenRef.current = nodes.length;
+                return () => clearTimeout(timeout);
+            }
         } else if (nodes.length === 0) {
             setAnimState('WAITING');
             prevNodesLenRef.current = 0;
+            prevTopNodeIdRef.current = null;
         }
-    }, [nodes.length, nodes]);
+    }, [nodes]);
 
     useFrame(({ clock }, delta) => {
         const queryPos = queryPosRef.current;
