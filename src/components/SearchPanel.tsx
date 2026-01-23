@@ -36,7 +36,11 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
             .then(res => res.json())
             .then(data => {
                 const stats = data.namespaces || {};
-                setNamespaces(stats);
+                const countMap: Record<string, number> = {};
+                Object.keys(stats).forEach(ns => {
+                    countMap[ns] = stats[ns].recordCount || 0;
+                });
+                setNamespaces(countMap);
             })
             .catch(err => console.error('Error fetching namespaces:', err));
     }, [selectedIndex]);
