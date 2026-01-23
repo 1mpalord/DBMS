@@ -19,10 +19,13 @@ export async function POST(req: NextRequest) {
 
         const idx = pinecone.index(indexName).namespace(ns);
         let results: { id: string; score: number; metadata?: any }[] = [];
+        let queryVector: number[] | null = null;
 
         if (searchType === 'semantic') {
             // Pure semantic search via Pinecone
             const embedding = await generateEmbedding(query);
+            queryVector = embedding;
+
             const queryResult = await idx.query({
                 vector: embedding,
                 topK: topK,
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
             const vectorCount = stats.namespaces?.[ns]?.recordCount || 0;
 
             if (vectorCount === 0) {
-                return NextResponse.json({ success: true, results: [], timeMs: Date.now() - start });
+                return NextResponse.json({ success: true, results: [], timeMs: Date.now() - start, queryVector: null });
             }
 
             // Fetch sample vectors (up to 100 for BM25)
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
                 .map(m => ({ id: m.id, text: String(m.metadata?.text || ''), metadata: m.metadata }));
 
             if (corpus.length === 0) {
-                return NextResponse.json({ success: true, results: [], timeMs: Date.now() - start });
+                return NextResponse.json({ success: true, results: [], timeMs: Date.now() - start, queryVector: null });
             }
 
             const bm25 = new BM25(corpus);
@@ -73,6 +76,7 @@ export async function POST(req: NextRequest) {
         else if (searchType === 'hybrid') {
             // Hybrid: Combine Semantic + BM25
             const embedding = await generateEmbedding(query);
+            queryVector = embedding;
 
             // Step 1: Semantic results
             const semanticResult = await idx.query({
@@ -118,7 +122,7 @@ export async function POST(req: NextRequest) {
         const timeMs = Date.now() - start;
         console.log(`[Search API] Found ${results.length} results in ${timeMs}ms`);
 
-        return NextResponse.json({ success: true, results, timeMs });
+        return NextResponse.json({ success: true, results, timeMs, queryVector });
     } catch (error: any) {
         console.error('[Search API] Error:', error);
         return NextResponse.json({ error: error.message || 'Search failed' }, { status: 500 });

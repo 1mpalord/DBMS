@@ -13,6 +13,7 @@ import { PayloadBuilder } from '@/components/tabs/DataModel/PayloadBuilder';
 import { ResultsCanvas } from '@/components/tabs/Query/ResultsCanvas';
 import { SearchPanel } from '@/components/SearchPanel';
 import { LSMAnimation } from '@/components/tabs/Architecture/LSMAnimation';
+import { SystemConsole } from '@/components/SystemConsole';
 import type { TabItem, TabId, VisualNode, SearchResult } from '@/types';
 
 // Tab Configuration
@@ -35,6 +36,18 @@ export default function Home() {
   const [nodes, setNodes] = useState<VisualNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [performance, setPerformance] = useState<{ timeMs: number } | undefined>();
+  const [queryVector, setQueryVector] = useState<number[] | null>(null);
+
+  // System State
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogic, setShowLogic] = useState(false);
+  const [showPerformance, setShowPerformance] = useState(false);
+  const [indexSpec, setIndexSpec] = useState<any>(null); // Store full index spec
+
+  const addLog = (msg: string) => {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 50));
+  };
 
   // UseEffect to fetch indexes
   React.useEffect(() => {
@@ -55,11 +68,31 @@ export default function Home() {
   const handleIndexChange = (newIndex: string) => {
     setSelectedIndex(newIndex);
     setSelectedNamespace(''); // Reset namespace when index changes
+    setIndexSpec(null); // Reset spec while fetching
   };
+
+  // Fetch Index Spec on change
+  React.useEffect(() => {
+    if (!selectedIndex) return;
+    addLog(`INDEX_SWITCH: ${selectedIndex}`);
+
+    fetch(`/api/pinecone/describe-index?name=${selectedIndex}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setIndexSpec(data.info);
+          addLog(`INDEX_SPEC: ${data.info.dimension} dims, ${data.info.metric}`);
+        } else {
+          addLog(`INDEX_ERROR: ${data.error}`);
+        }
+      })
+      .catch(err => addLog(`INDEX_NET_ERR: ${err}`));
+  }, [selectedIndex]);
 
   const handleSearch = async (query: string, type: 'semantic' | 'lexical' | 'hybrid', indexName: string, alpha?: number, ns?: string) => {
     setIsLoading(true);
     setPerformance(undefined);
+    addLog(`SEARCH_INIT: "${query}" [${type}]`);
     try {
       const res = await fetch('/api/search', {
         method: 'POST',
@@ -79,6 +112,8 @@ export default function Home() {
       const data = await res.json();
       if (data && data.results && Array.isArray(data.results)) {
         setPerformance({ timeMs: data.timeMs });
+        setQueryVector(data.queryVector || null);
+        addLog(`SEARCH_COMPLETE:Found ${data.results.length} results (${data.timeMs}ms)`);
 
         const newNodes: VisualNode[] = data.results.map((res: SearchResult) => {
           const existing = nodes.find(n => n.id === res.id);
@@ -95,8 +130,9 @@ export default function Home() {
         });
         setNodes(newNodes);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search error:', error);
+      addLog(`SEARCH_ERROR: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -355,6 +391,13 @@ export default function Home() {
                       onIndexChange={handleIndexChange}
                       selectedNamespace={selectedNamespace}
                       onNamespaceChange={setSelectedNamespace}
+                      queryVector={queryVector}
+                      indexDimensions={indexSpec?.dimension}
+
+                      // Pass Logic Props for Overlay to control Logic animation visibility inside Canvas
+                      showLogic={showLogic}
+                      setShowLogic={setShowLogic}
+                      showPerformance={showPerformance}
                     />
                   </div>
                 </div>
@@ -375,6 +418,14 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </div>
+      <SystemConsole
+        logs={logs}
+        showLogic={showLogic}
+        onToggleLogic={() => { setShowLogic(!showLogic); addLog(`TOGGLE_LOGIC: ${!showLogic}`); }}
+        showPerformance={showPerformance}
+        onTogglePerformance={() => { setShowPerformance(!showPerformance); addLog(`TOGGLE_PERF: ${!showPerformance}`); }}
+        active={activeTab === 'query'}
+      />
     </main>
   );
 }

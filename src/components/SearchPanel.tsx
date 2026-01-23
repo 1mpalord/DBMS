@@ -60,74 +60,69 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
     return (
         <>
             {/* TOP HUD: Command Bar */}
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 pointer-events-none">
-                <form
-                    onSubmit={handleSearch}
-                    className="relative bg-black/40 backdrop-blur-2xl border border-white/5 rounded-full px-6 py-2 shadow-2xl flex items-center gap-4 group hover:border-[#bef264]/20 transition-all duration-500 pointer-events-auto"
-                >
-                    <Search className="w-5 h-5 text-slate-500 group-hover:text-[#bef264] transition-colors" />
-
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="SCAN LATENT SPACE..."
-                        className="bg-transparent flex-1 outline-none text-sm font-mono text-white tracking-widest uppercase placeholder:text-slate-700 py-2"
-                    />
-
-                    <div className="flex items-center gap-2 group/idx">
-                        <Database className="w-3 h-3 text-[#bef264]/40" />
-                        <select
-                            value={selectedIndex}
-                            onChange={(e) => onIndexChange?.(e.target.value)}
-                            className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none uppercase tracking-wider max-w-[120px] truncate cursor-pointer hover:text-white transition-colors"
-                        >
-                            {availableIndexes.map(idx => (
-                                <option key={idx} value={idx} className="bg-[#0f172a] text-white underline">{idx.toUpperCase()}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="h-4 w-px bg-white/10" />
-
-                    <div className="flex items-center gap-2 group/ns">
-                        <Globe className={`w-3 h-3 transition-colors ${selectedNamespace ? 'text-[#bef264]' : 'text-slate-500'}`} />
-                        <select
-                            className="bg-transparent text-[10px] font-mono text-white/70 hover:text-white outline-none cursor-pointer uppercase tracking-wider max-w-[100px] truncate"
-                            value={selectedNamespace}
-                            onChange={(e) => onNamespaceChange(e.target.value)}
-                        >
-                            <option value="" className="bg-[#0f172a] text-white underline">
-                                DEFAULT {namespaces[''] !== undefined ? `(${namespaces['']} records)` : namespaces['default'] !== undefined ? `(${namespaces['default']} records)` : ''}
-                            </option>
-                            {Object.entries(namespaces)
-                                .filter(([ns]) => ns !== '' && ns !== 'default')
-                                .map(([ns, count]) => (
-                                    <option key={ns} value={ns} className="bg-[#0f172a] text-white underline">
-                                        {ns.toUpperCase()} ({count} records)
-                                    </option>
-                                ))}
-                        </select>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading || !query || !selectedIndex}
-                        className={`p-2 rounded-full transition-all ${isLoading ? 'opacity-50' : 'hover:bg-[#bef264]/10 text-slate-400 hover:text-[#bef264]'
-                            }`}
+            <div className="absolute top-6 left-0 right-0 z-50 px-4 pointer-events-none flex justify-center">
+                <div className="relative w-full max-w-2xl flex items-center justify-center">
+                    <form
+                        onSubmit={handleSearch}
+                        className="relative w-full bg-black/40 backdrop-blur-2xl border border-white/5 rounded-full px-6 py-2 shadow-2xl flex items-center gap-4 group hover:border-[#bef264]/20 transition-all duration-500 pointer-events-auto"
                     >
-                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Filter className="w-5 h-5" />}
-                    </button>
+                        <Search className="w-5 h-5 text-slate-500 group-hover:text-[#bef264] transition-colors" />
 
-                    {/* Latency HUD Integrated */}
-                    {performance && (
-                        <div className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full ml-4 hidden lg:block">
-                            <div className="bg-black/60 backdrop-blur-xl border border-[#bef264]/20 px-3 py-1.5 rounded text-[9px] font-mono text-[#bef264] whitespace-nowrap">
-                                PING: {performance.timeMs.toFixed(0)}MS
-                            </div>
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="SCAN LATENT SPACE..."
+                            className="bg-transparent flex-1 outline-none text-sm font-mono text-white tracking-widest uppercase placeholder:text-slate-700 py-2"
+                        />
+
+                        <div className="flex items-center gap-2 group/idx">
+                            <Database className="w-3 h-3 text-[#bef264]/40" />
+                            <select
+                                value={selectedIndex}
+                                onChange={(e) => onIndexChange?.(e.target.value)}
+                                className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none uppercase tracking-wider max-w-[120px] truncate cursor-pointer hover:text-white transition-colors"
+                            >
+                                {availableIndexes.map(idx => (
+                                    <option key={idx} value={idx} className="bg-[#0f172a] text-white underline">{idx.toUpperCase()}</option>
+                                ))}
+                            </select>
                         </div>
-                    )}
-                </form>
+
+                        <div className="h-4 w-px bg-white/10" />
+
+                        <div className="flex items-center gap-2 group/ns">
+                            <Globe className={`w-3 h-3 transition-colors ${selectedNamespace ? 'text-[#bef264]' : 'text-slate-500'}`} />
+                            <select
+                                className="bg-transparent text-[10px] font-mono text-white/70 hover:text-white outline-none cursor-pointer uppercase tracking-wider max-w-[100px] truncate"
+                                value={selectedNamespace}
+                                onChange={(e) => onNamespaceChange(e.target.value)}
+                            >
+                                <option value="" className="bg-[#0f172a] text-white underline">
+                                    DEFAULT {namespaces[''] !== undefined ? `(${namespaces['']} records)` : namespaces['default'] !== undefined ? `(${namespaces['default']} records)` : ''}
+                                </option>
+                                {Object.entries(namespaces)
+                                    .filter(([ns]) => ns !== '' && ns !== 'default')
+                                    .map(([ns, count]) => (
+                                        <option key={ns} value={ns} className="bg-[#0f172a] text-white underline">
+                                            {ns.toUpperCase()} ({count} records)
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+                        <div className="h-4 w-px bg-white/10" />
+
+                        {/* Latency HUD Integrated */}
+                        {performance && (
+                            <div className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full ml-4 hidden lg:block">
+                                <div className="bg-black/60 backdrop-blur-xl border border-[#bef264]/20 px-3 py-1.5 rounded text-[9px] font-mono text-[#bef264] whitespace-nowrap">
+                                    PING: {performance.timeMs.toFixed(0)}MS
+                                </div>
+                            </div>
+                        )}
+                    </form>
+
+                </div>
             </div>
 
             {/* BOTTOM HUD: Mode Dock */}
@@ -172,4 +167,3 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
         </>
     );
 };
-

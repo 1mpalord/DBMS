@@ -164,89 +164,102 @@ const NodeDetailPanel: React.FC<{ node: VisualNode; onClose: () => void }> = ({ 
     );
 };
 
-const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) => {
+const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[]; searchId: number; dataVersion: number }> = ({ nodes, searchId, dataVersion }) => {
     const markerGroupRef = useRef<THREE.Group>(null);
     const pulseRef = useRef<THREE.Group>(null);
-    const queryPosRef = useRef(new THREE.Vector3(0, 12, 0)); // Start from top
+    const queryPosRef = useRef(new THREE.Vector3(0, 12, 0)); // Permanent position ref
+    const linkOriginRef = useRef(new THREE.Vector3(0, 12, 0)); // Smoothly moving link origin
     const [animState, setAnimState] = useState<'WAITING' | 'FLYING' | 'EXTENDING' | 'COMPLETE'>('WAITING');
     const [lineProgress, setLineProgress] = useState(0);
-    const prevNodesLenRef = useRef(0);
+    const prevSearchIdRef = useRef<number>(0);
+    const prevTopNodeIdRef = useRef<string | null>(null);
 
-    // 1. Find Top 5 Nodes (no threshold - always show top 5 if available)
-    const topNodes = useMemo(() => {
-        return [...nodes]
-            .sort((a, b) => (b.score || 0) - (a.score || 0))
-            .slice(0, 5); // Always take top 5, no score threshold
-    }, [nodes]);
+    // PERSISTENCE: Snapshot nodes used for rendering to prevent "one-frame" flashes
+    const [renderedNodes, setRenderedNodes] = useState<VisualNode[]>([]);
 
-    // 2. Calculate Target Centroid
+    // Determine which nodes we are actually showing
+    const displayNodes = useMemo(() => {
+        if (renderedNodes.length > 0) return renderedNodes;
+        // Fallback: sort by score first!
+        return [...nodes].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    }, [renderedNodes, nodes]);
+
+    // 1. Calculate Target Centroid from DISPLAY NODES (Source of Truth)
     const targetCentroid = useMemo(() => {
-        if (topNodes.length === 0) return new THREE.Vector3(0, 0, 0);
+        const top = [...displayNodes];
+
+        if (top.length === 0) return new THREE.Vector3(0, 0, 0);
 
         let x = 0, y = 0, z = 0;
-        topNodes.forEach(node => {
+        top.forEach(node => {
             x += node.position[0];
             y += node.position[1];
             z += node.position[2];
         });
 
-        return new THREE.Vector3(x / topNodes.length, y / topNodes.length, z / topNodes.length);
-    }, [topNodes]);
+        return new THREE.Vector3(x / top.length, y / top.length, z / top.length);
+    }, [displayNodes]);
 
-    // Trigger Animation Sequence when NEW results arrive
-    const prevTopNodeIdRef = useRef<string | null>(null);
+    // Update rendered nodes ONLY once when entering EXTENDING state
+    // Update rendered nodes when entering EXTENDING state (Always refresh with new data)
+    useEffect(() => {
+        if (animState === 'EXTENDING') {
+            const topNodes = [...nodes].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+            setRenderedNodes(topNodes);
+        }
+        // Clear rendered nodes when a NEW search starts (not during current animation)
+        else if (animState === 'WAITING' && searchId !== 0 && searchId !== prevSearchIdRef.current && renderedNodes.length > 0) {
+            // DON'T clear yet - keep showing old links until new ones are ready
+            // Only clear if we want to show "empty" state
+        }
+    }, [animState, nodes, searchId, renderedNodes.length]);
 
+    // Immediate Feedback: Lock visual state and reset progress
+    useEffect(() => {
+        if (searchId !== 0 && searchId !== prevSearchIdRef.current) {
+            setAnimState('WAITING');
+            setLineProgress(0);
+        }
+    }, [searchId]);
+
+    // Stage 1: Trigger Extension only when DATA CATCHES UP
     useEffect(() => {
         if (nodes.length > 0) {
-            const topNodeId = nodes[0]?.id;
-
-            // Check if findings actually changed (IDs check)
-            if (topNodeId !== prevTopNodeIdRef.current) {
-                // If it's first time or we were waiting, start from top
-                // Otherwise, keep current position for a smooth move
-                if (animState === 'WAITING' && queryPosRef.current.y === 12) {
-                    queryPosRef.current.set(0, 12, 0);
-                }
-
-                setLineProgress(0);
-                setAnimState('WAITING');
-
-                // Start moving slightly faster on second tries
-                const delay = prevTopNodeIdRef.current ? 800 : 2000;
-                const timeout = setTimeout(() => {
-                    setAnimState('FLYING');
-                }, delay);
-
-                prevTopNodeIdRef.current = topNodeId;
-                prevNodesLenRef.current = nodes.length;
-                return () => clearTimeout(timeout);
-            }
-        } else if (nodes.length === 0) {
-            setAnimState('WAITING');
-            prevNodesLenRef.current = 0;
-            prevTopNodeIdRef.current = null;
-        }
-    }, [nodes]);
-
-    useFrame(({ clock }, delta) => {
-        const queryPos = queryPosRef.current;
-
-        if (animState === 'FLYING') {
-            const speed = 3.0 * delta; // Smooth flight speed
-            queryPos.lerp(targetCentroid, speed);
-
-            // Check if close enough to target
-            if (queryPos.distanceTo(targetCentroid) < 0.1) {
-                queryPos.copy(targetCentroid);
+            // Only trigger if we are WAITING and the data version matches the current search
+            if (animState === 'WAITING' && dataVersion === searchId && searchId !== 0) {
                 setAnimState('EXTENDING');
             }
         }
-        else if (animState === 'EXTENDING') {
+    }, [nodes, searchId, dataVersion, animState]);
+
+    useFrame(({ clock }, delta) => {
+        const queryPos = queryPosRef.current;
+        const linkOrigin = linkOriginRef.current;
+
+        // Smoothly pull linkOrigin towards targetCentroid (prevents teleportation of the "web")
+        linkOrigin.lerp(targetCentroid, 3.0 * delta);
+
+        // Stage 2: Link Extension (Anchored at linkOrigin)
+        if (animState === 'EXTENDING') {
             setLineProgress(prev => {
-                const newVal = Math.min(prev + (delta * 1.2), 1);
-                if (newVal >= 1) setAnimState('COMPLETE');
+                const newVal = Math.min(prev + (delta * 1.5), 1);
+                if (newVal >= 1) setAnimState('FLYING');
                 return newVal;
             });
+        }
+        // Stage 3: Node Flight (Move queryPos to the newly formed link origin)
+        else if (animState === 'FLYING') {
+            const speed = 4.0 * delta;
+            queryPos.lerp(linkOrigin, speed);
+
+            if (queryPos.distanceTo(linkOrigin) < 0.05) {
+                queryPos.copy(linkOrigin);
+                setAnimState('COMPLETE');
+            }
+        }
+        else if (animState === 'COMPLETE') {
+            queryPos.copy(targetCentroid);
+            linkOrigin.copy(targetCentroid);
         }
 
         // Update the marker group position directly
@@ -254,7 +267,7 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
             markerGroupRef.current.position.copy(queryPos);
         }
 
-        // Pulse animation (always active)
+        // Pulse animation
         if (pulseRef.current) {
             const t = clock.getElapsedTime();
             const scale = 1 + Math.sin(t * 4) * 0.2;
@@ -262,20 +275,12 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
         }
     });
 
-    // No results - show faded X at origin
-    if (topNodes.length === 0) {
-        return (
-            <Billboard position={[0, 0, 0]}>
-                <Text fontSize={0.8} color="#ef4444" anchorX="center" anchorY="middle" fillOpacity={0.2}>×</Text>
-            </Billboard>
-        );
-    }
+    // displayNodes is now a memoized value, so we can remove this line
 
     return (
         <group>
-            {/* Dynamic Query Marker (Animated Position) */}
+            {/* Dynamic Query Marker */}
             <group ref={markerGroupRef}>
-                {/* Main Sphere */}
                 <mesh>
                     <sphereGeometry args={[0.4, 32, 32]} />
                     <meshStandardMaterial
@@ -285,16 +290,12 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
                         toneMapped={false}
                     />
                 </mesh>
-
-                {/* Pulsing outer ring */}
                 <group ref={pulseRef}>
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
                         <ringGeometry args={[0.55, 0.7, 32]} />
                         <meshBasicMaterial color="#ef4444" transparent opacity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                 </group>
-
-                {/* Label */}
                 <Billboard position={[0, 1, 0]}>
                     <Text fontSize={0.3} color="#ef4444" outlineWidth={0.02} outlineColor="#000">
                         {animState === 'WAITING' ? 'SCANNING...' : animState === 'FLYING' ? 'LOCATING...' : 'QUERY'}
@@ -302,20 +303,16 @@ const MagnetLinkVisualization: React.FC<{ nodes: VisualNode[] }> = ({ nodes }) =
                 </Billboard>
             </group>
 
-            {/* Glowing Connection Lines - show during EXTENDING and COMPLETE */}
-            {(animState === 'EXTENDING' || animState === 'COMPLETE') && topNodes.map((node, i) => (
+            {/* Link Web - Only show when lineProgress > 0 */}
+            {lineProgress > 0 && displayNodes.map((node, i) => (
                 <Line
-                    key={`link-${i}`}
+                    key={`link-shell-${i}`}
                     points={[
-                        targetCentroid,
-                        new THREE.Vector3().lerpVectors(targetCentroid, new THREE.Vector3(...node.position), lineProgress)
+                        linkOriginRef.current,
+                        new THREE.Vector3().lerpVectors(linkOriginRef.current, new THREE.Vector3(...node.position), lineProgress)
                     ]}
                     color="#ef4444"
                     lineWidth={2}
-                    dashed={true}
-                    dashScale={2}
-                    dashSize={1}
-                    gapSize={0.5}
                     transparent
                     opacity={0.6 * lineProgress}
                 />
@@ -365,17 +362,37 @@ const DebugConsole: React.FC<{ topNodes: VisualNode[]; totalResults: number }> =
 };
 interface VectorCanvasProps {
     nodes: VisualNode[];
+    searchId?: number;
 }
 
-export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
+export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes, searchId = 0 }) => {
     const [selectedNode, setSelectedNode] = useState<VisualNode | null>(null);
+    const [deferredNodes, setDeferredNodes] = useState<VisualNode[]>([]);
+    const [deferredSearchId, setDeferredSearchId] = useState(0);
 
-    // Calculate top nodes at top level to pass to both Visualization and Console (no threshold)
+    // Deferred results rendering (3s latency perception)
+    useEffect(() => {
+        // If it's a new search (searchId changed) or results cleared
+        if (nodes.length === 0) {
+            setDeferredNodes([]);
+            setDeferredSearchId(searchId); // Sync immediately for clear
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setDeferredNodes(nodes);
+            setDeferredSearchId(searchId); // Sync ID with newly arrived data
+        }, 3000); // 3-second "Scanning" window
+
+        return () => clearTimeout(timer);
+    }, [nodes, searchId]);
+
+    // Calculate top nodes at top level based on DEFERRED data
     const topNodes = useMemo(() => {
-        return [...nodes]
+        return [...deferredNodes]
             .sort((a, b) => (b.score || 0) - (a.score || 0))
             .slice(0, 5); // Always take top 5
-    }, [nodes]);
+    }, [deferredNodes]);
 
     const topNodeIds = useMemo(() => new Set(topNodes.map(n => n.id)), [topNodes]);
 
@@ -427,12 +444,12 @@ export const VectorCanvas: React.FC<VectorCanvasProps> = ({ nodes }) => {
 
                 <PCAGrid />
 
-                <MagnetLinkVisualization nodes={nodes} />
+                <MagnetLinkVisualization nodes={deferredNodes} searchId={searchId} dataVersion={deferredSearchId} />
 
                 {selectedNode && <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />}
 
                 <group>
-                    {Array.isArray(nodes) && nodes.map((node) => {
+                    {Array.isArray(deferredNodes) && deferredNodes.map((node) => {
                         let color = '#334155'; // Background
                         let isSelected = false;
                         if (node.score !== undefined) {
