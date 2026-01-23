@@ -18,8 +18,8 @@ let extractor: Pipeline | null = null;
 export const getExtractor = async () => {
     if (!extractor) {
         // @ts-expect-error - Xenova types are loose
-        // Switching to bge-small-en-v1.5 for better stability/performance on Vercel compared to MiniLM
-        extractor = await pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5', { quantized: true });
+        // Using all-MiniLM-L6-v2 as requested. NOTE: This requires 'next.config.ts' serverExternalPackages fix to work on Vercel.
+        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
     }
     return extractor!;
 };
