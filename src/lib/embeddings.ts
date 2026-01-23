@@ -1,15 +1,5 @@
-import { pipeline, env } from '@xenova/transformers';
-
-// Disable local models for server-side if needed, though Xenova works fine
-// Configure Xenova to use /tmp for caching (required for Vercel/Lambda readonly FS)
-env.allowLocalModels = false;
-env.useBrowserCache = false;
-// ts-expect-error - env.cacheDir is valid in Node runtime but types might differ
-env.cacheDir = '/tmp/.cache';
-
-// Define a more specific type if possible, or use unknown with type guards. 
-// For now, we'll use a functional type alias for the pipeline to avoid 'any'.
-type FeatureExtractionPipeline = (text: string, options?: { pooling: string; normalize: boolean }) => Promise<{ data: Float32Array }>;
+// Define types locally since we're importing dynamically
+type FeatureExtractionPipeline = (text: string, options?: { pooling?: string; normalize?: boolean }) => Promise<{ data: Float32Array }>;
 type Tokenizer = { decode: (ids: number[]) => string };
 type Pipeline = FeatureExtractionPipeline & { tokenizer: Tokenizer };
 
@@ -17,9 +7,20 @@ let extractor: Pipeline | null = null;
 
 export const getExtractor = async () => {
     if (!extractor) {
-        // @ts-expect-error - Xenova types are loose
+        console.log('[Embeddings] Loading Transformers.js dynamically...');
+        const { pipeline, env } = await import('@xenova/transformers');
+        console.log('[Embeddings] Transformers module loaded.');
+
+        // Configure Xenova to use /tmp for caching (required for Vercel/Lambda readonly FS)
+        env.allowLocalModels = false;
+        env.useBrowserCache = false;
+        // ts-expect-error - env.cacheDir is valid in Node runtime but types might differ
+        env.cacheDir = '/tmp/.cache';
+
         // Using all-MiniLM-L6-v2 as requested. NOTE: This requires 'next.config.ts' serverExternalPackages fix to work on Vercel.
-        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
+        console.log('[Embeddings] Initializing pipeline...');
+        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true }) as any;
+        console.log('[Embeddings] Pipeline initialized successfully.');
     }
     return extractor!;
 };

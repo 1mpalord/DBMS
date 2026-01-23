@@ -7,6 +7,7 @@ import { BM25 } from '@/lib/bm25';
 // const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
 
 export async function POST(req: NextRequest) {
+    console.log('[Search API] HIT - Request received. Function started.');
     try {
         const { indexName, namespace, query, searchType, alpha = 0.7, topK = 5 } = await req.json();
 
