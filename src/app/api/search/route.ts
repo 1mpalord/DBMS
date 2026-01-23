@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
                 topK: topK,
                 includeMetadata: true
             });
-            results = (queryResult.matches || []).map(m => ({
+            results = (queryResult.matches || []).map((m: any) => ({
                 id: m.id,
                 score: m.score || 0,
                 metadata: m.metadata

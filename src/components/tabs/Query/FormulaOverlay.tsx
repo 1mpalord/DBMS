@@ -27,6 +27,14 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
 }) => {
     const [step, setStep] = useState(0);
 
+    // Generate stable random values for visualization to prevent hydration mismatch/impurity
+    const randomStats = React.useMemo(() => ({
+        tf: Array.from({ length: 10 }, () => Math.random()),
+        idf: Array.from({ length: 10 }, () => Math.random()),
+        vectors: Array.from({ length: 16 }, () => Math.random()),
+        lexical: Math.random()
+    }), [query, mode]); // Change randoms only when input changes
+
     // Reset step to 0 whenever the search overlay is triggered
     React.useEffect(() => {
         if (visible) {
@@ -63,11 +71,11 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
         : '[0.09, -0.41, 0.76, ...]';
 
     return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#020617]/95 backdrop-blur-2xl pointer-events-auto overflow-hidden">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#020617]/95 backdrop-blur-2xl pointer-events-auto overflow-hidden" >
             {/* Cyberpunk Scanlines */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] select-none">
+            < div className="absolute inset-0 pointer-events-none opacity-[0.03] select-none" >
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
-            </div>
+            </div >
 
             <div className="w-full max-w-4xl p-8 relative flex flex-col items-center">
 
@@ -147,8 +155,8 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
                                                         <span className="text-white">&quot;{token.toLowerCase()}&quot;</span>
                                                     </div>
                                                     <div className="flex gap-4 text-[#bef264]">
-                                                        <span>TF: {(0.5 + Math.random() * 0.5).toFixed(2)}</span>
-                                                        <span>IDF: {(1.2 + Math.random() * 2.5).toFixed(2)}</span>
+                                                        <span>TF: {(0.5 + randomStats.tf[i % 10] * 0.5).toFixed(2)}</span>
+                                                        <span>IDF: {(1.2 + randomStats.idf[i % 10] * 2.5).toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -162,7 +170,7 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
                                             {Array.from({ length: 16 }).map((_, i) => (
                                                 <div key={i} className="flex gap-1 animate-pulse" style={{ animationDelay: `${i * 0.05}s` }}>
                                                     <span className="text-slate-700">{i.toString().padStart(2, '0')}</span>
-                                                    <span className="text-[#bef264]/60">{(Math.random() * 2 - 1).toFixed(4)}</span>
+                                                    <span className="text-[#bef264]/60">{(randomStats.vectors[i] * 2 - 1).toFixed(4)}</span>
                                                 </div>
                                             ))}
                                             <div className="col-span-4 text-center pt-4 text-slate-500 text-[8px] tracking-[0.3em] uppercase italic">
@@ -254,7 +262,7 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
                                                 <div className="flex flex-col items-start gap-2">
                                                     <span className="text-[10px] text-[#bef264]">LEXICAL_SCORE</span>
                                                     <div className="px-3 py-1 bg-[#bef264]/10 border border-[#bef264]/30 text-[#bef264] text-xs rounded">
-                                                        {(0.45 + Math.random() * 0.3).toFixed(4)}
+                                                        {(0.45 + randomStats.lexical * 0.3).toFixed(4)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -321,6 +329,6 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
                 </div>
 
             </div>
-        </div>
+        </div >
     );
 };
