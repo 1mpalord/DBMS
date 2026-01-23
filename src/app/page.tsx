@@ -107,9 +107,11 @@ export default function Home() {
         }),
       });
 
-      if (!res.ok) throw new Error(`Search failed: ${res.statusText}`);
-
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `Search failed: ${res.statusText}`);
+      }
       if (data && data.results && Array.isArray(data.results)) {
         setPerformance({ timeMs: data.timeMs });
         setQueryVector(data.queryVector || null);
