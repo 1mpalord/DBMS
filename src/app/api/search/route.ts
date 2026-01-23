@@ -3,7 +3,8 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { generateEmbedding } from '@/lib/embeddings';
 import { BM25 } from '@/lib/bm25';
 
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+// Remove top-level init to prevent cold-start crashes
+// const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
 
 export async function POST(req: NextRequest) {
     try {
@@ -17,6 +18,11 @@ export async function POST(req: NextRequest) {
         const start = Date.now();
         console.log(`[Search API] ${searchType} search on ${indexName}::${ns} for "${query}"`);
 
+        if (!process.env.PINECONE_API_KEY) {
+            throw new Error('PINECONE_API_KEY is not defined in environment variables');
+        }
+
+        const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
         const idx = pinecone.index(indexName).namespace(ns);
         let results: { id: string; score: number; metadata?: any }[] = [];
         let queryVector: number[] | null = null;

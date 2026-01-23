@@ -1,7 +1,7 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
+  apiKey: process.env.PINECONE_API_KEY || 'placeholder',
 });
 
 const indexName = process.env.PINECONE_INDEX_NAME || 'vector-demo';

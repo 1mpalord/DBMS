@@ -1,7 +1,11 @@
 import { pipeline, env } from '@xenova/transformers';
 
 // Disable local models for server-side if needed, though Xenova works fine
+// Configure Xenova to use /tmp for caching (required for Vercel/Lambda readonly FS)
 env.allowLocalModels = false;
+env.useBrowserCache = false;
+// @ts-expect-error - env.cacheDir is valid in Node runtime but types might differ
+env.cacheDir = '/tmp/.cache';
 
 // Define a more specific type if possible, or use unknown with type guards. 
 // For now, we'll use a functional type alias for the pipeline to avoid 'any'.
