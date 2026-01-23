@@ -359,6 +359,7 @@ export function PayloadBuilder({ selectedIndex: initialIndex, globalNamespace, o
         } catch (err) {
             setLogs(prev => [...prev, `[Error] Ping failed: ${err}`]);
         } finally {
+
             setIsVerifying(false);
         }
     };
