@@ -31,6 +31,7 @@ export default function Home() {
 
   // Global Multi-Tenancy State
   const [selectedNamespace, setSelectedNamespace] = useState<string>('');
+  const [availableIndexes, setAvailableIndexes] = useState<string[]>(['vector-demo']); // Default fallback
   const [nodes, setNodes] = useState<VisualNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [performance, setPerformance] = useState<{ timeMs: number } | undefined>();
@@ -42,6 +43,7 @@ export default function Home() {
       .then(data => {
         if (data.indexes) {
           const names = data.indexes.map((idx: { name: string }) => idx.name);
+          setAvailableIndexes(names);
           if (names.length > 0 && !names.includes(selectedIndex)) {
             setSelectedIndex(names[0]);
           }
@@ -157,8 +159,9 @@ export default function Home() {
               onChange={(e) => handleIndexChange(e.target.value)}
               className="bg-slate-900 border border-slate-700 text-[#bef264] text-xs font-mono py-2 px-4 outline-none hover:border-[#bef264] transition-colors cursor-pointer uppercase"
             >
-              <option value="vector-demo">vector-demo</option>
-              <option value="experimental">experimental-v1</option>
+              {availableIndexes.map(idx => (
+                <option key={idx} value={idx}>{idx}</option>
+              ))}
             </select>
           </div>
         </header>
@@ -348,6 +351,8 @@ export default function Home() {
                       isLoading={isLoading}
                       performance={performance}
                       selectedIndex={selectedIndex}
+                      availableIndexes={availableIndexes}
+                      onIndexChange={handleIndexChange}
                       selectedNamespace={selectedNamespace}
                       onNamespaceChange={setSelectedNamespace}
                     />

@@ -14,6 +14,8 @@ interface ResultsCanvasProps {
     isLoading: boolean;
     performance?: { timeMs: number };
     selectedIndex: string;
+    availableIndexes: string[];
+    onIndexChange: (index: string) => void;
     selectedNamespace: string;
     onNamespaceChange: (ns: string) => void;
 }
@@ -25,6 +27,8 @@ export function ResultsCanvas({
     isLoading,
     performance,
     selectedIndex,
+    availableIndexes,
+    onIndexChange,
     selectedNamespace,
     onNamespaceChange
 }: ResultsCanvasProps) {
@@ -39,6 +43,8 @@ export function ResultsCanvas({
                 performance={performance}
                 floating={true}
                 selectedIndex={selectedIndex}
+                availableIndexes={availableIndexes}
+                onIndexChange={onIndexChange}
                 selectedNamespace={selectedNamespace}
                 onNamespaceChange={onNamespaceChange}
             />
@@ -66,10 +72,9 @@ export function ResultsCanvas({
 
             {/* Empty State Overlay */}
             {nodes.length === 0 && !isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 flex-col gap-3 bg-black/20 backdrop-blur-[2px]">
-                    <div className="w-16 h-16 border-2 border-[#bef264]/10 rounded-full border-t-[#bef264] animate-spin mb-4" />
-                    <span className="text-xs font-mono text-[#bef264] uppercase tracking-[0.4em] font-black opacity-80 animate-pulse">[ SCANNING_READY ]</span>
-                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Awaiting Semantic Protocol Initiation</span>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 flex-col gap-2">
+                    <span className="text-[9px] font-mono text-[#bef264]/40 uppercase tracking-[0.6em] font-black">[ READY_FOR_SCAN ]</span>
+                    <span className="text-[9px] font-mono text-slate-700 uppercase tracking-widest">Select target and initiate protocol</span>
                 </div>
             )}
         </div>

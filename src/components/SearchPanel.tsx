@@ -9,6 +9,8 @@ interface SearchPanelProps {
     performance?: { timeMs: number };
     floating?: boolean;
     selectedIndex: string;
+    availableIndexes?: string[];
+    onIndexChange?: (index: string) => void;
     selectedNamespace: string;
     onNamespaceChange: (ns: string) => void;
 }
@@ -19,6 +21,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
     performance,
     floating,
     selectedIndex,
+    availableIndexes = [],
+    onIndexChange,
     selectedNamespace,
     onNamespaceChange
 }) => {
@@ -71,11 +75,17 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                         className="bg-transparent flex-1 outline-none text-sm font-mono text-white tracking-widest uppercase placeholder:text-slate-700 py-2"
                     />
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 group/idx">
                         <Database className="w-3 h-3 text-[#bef264]/40" />
-                        <span className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none uppercase tracking-wider max-w-[120px] truncate">
-                            {selectedIndex.toUpperCase()}
-                        </span>
+                        <select
+                            value={selectedIndex}
+                            onChange={(e) => onIndexChange?.(e.target.value)}
+                            className="bg-transparent text-[10px] font-mono text-[#bef264] outline-none uppercase tracking-wider max-w-[120px] truncate cursor-pointer hover:text-white transition-colors"
+                        >
+                            {availableIndexes.map(idx => (
+                                <option key={idx} value={idx} className="bg-[#0f172a] text-white underline">{idx.toUpperCase()}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="h-4 w-px bg-white/10" />
