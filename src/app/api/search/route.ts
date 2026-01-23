@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
 
         if (searchType === 'semantic') {
             // Pure semantic search via Pinecone
+            console.log('[Search API] Starting vector generation...');
             const embedding = await generateEmbedding(query);
+            console.log('[Search API] Vector generated successfully.');
             queryVector = embedding;
 
             const queryResult = await idx.query({

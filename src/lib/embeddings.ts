@@ -24,8 +24,11 @@ export const getExtractor = async () => {
 };
 
 export const generateEmbedding = async (text: string): Promise<number[]> => {
+    console.log('[Embeddings] generateEmbedding called for text length:', text.length);
     const extract = await getExtractor();
+    console.log('[Embeddings] Pipeline ready, running feature extraction...');
     const output = await extract(text, { pooling: 'mean', normalize: true });
+    console.log('[Embeddings] Feature extraction complete.');
     return Array.from(output.data);
 };
 
