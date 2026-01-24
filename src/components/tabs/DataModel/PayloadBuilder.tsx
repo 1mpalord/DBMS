@@ -48,6 +48,7 @@ export function PayloadBuilder({ selectedIndex: initialIndex, globalNamespace, o
     const [newNamespaceName, setNewNamespaceName] = useState('');
     const [globalMetadata, setGlobalMetadata] = useState('');
     const [schemaWarning, setSchemaWarning] = useState<string | null>(null);
+    const [batchSize, setBatchSize] = useState(100); // Default to 100 for better speed
 
     // 1. Fetch Indexes (Sync with initialIndex)
     React.useEffect(() => {
@@ -222,13 +223,13 @@ export function PayloadBuilder({ selectedIndex: initialIndex, globalNamespace, o
             });
         }
 
-        const batchSize = 10;
+        const currentBatchSize = batchSize || 10;
         const total = stagedRecords.length;
 
         try {
-            for (let i = 0; i < total; i += batchSize) {
-                const chunk = stagedRecords.slice(i, i + batchSize);
-                setLogs(prev => [...prev, `[Batch] Processing ${i + 1}-${Math.min(i + batchSize, total)} of ${total}...`]);
+            for (let i = 0; i < total; i += currentBatchSize) {
+                const chunk = stagedRecords.slice(i, i + currentBatchSize);
+                setLogs(prev => [...prev, `[Batch] Processing ${i + 1}-${Math.min(i + currentBatchSize, total)} of ${total}...`]);
 
                 // 1. Extract texts for embedding (Heuristic: prioritized "text", fallback to longest string)
                 const texts = chunk.map(r => {
@@ -519,6 +520,33 @@ export function PayloadBuilder({ selectedIndex: initialIndex, globalNamespace, o
                                 onChange={(e) => setGlobalMetadata(e.target.value)}
                                 className="w-full bg-slate-900 border border-slate-800 p-2 text-xs text-slate-400 outline-none focus:border-[#bef264]"
                             />
+                        </div>
+
+                        {/* Batch Size Control */}
+                        <div className={activeMode === 'bulk' ? 'block' : 'hidden opacity-50 grayscale pointer-events-none'}>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-[10px] uppercase text-slate-500 block">Batch Size Ingestion</label>
+                                <span className={`text-[10px] font-mono ${batchSize > 500 ? 'text-rose-400' : 'text-[#bef264]'}`}>{batchSize} / 1000</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="1000"
+                                    step="1"
+                                    value={batchSize}
+                                    onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                                    className="flex-1 accent-[#bef264] h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="1000"
+                                    value={batchSize}
+                                    onChange={(e) => setBatchSize(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
+                                    className="w-16 bg-slate-900 border border-slate-800 p-1 text-[10px] text-[#bef264] text-center outline-none focus:border-[#bef264]"
+                                />
+                            </div>
                         </div>
                     </div>
 
