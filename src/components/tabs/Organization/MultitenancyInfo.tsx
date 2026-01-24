@@ -132,11 +132,11 @@ export function MultitenancyInfo() {
                         key={btn.id}
                         onClick={() => toggleSection(btn.id as Section)}
                         className={`flex-1 flex items-center justify-center gap-3 px-4 py-3 border transition-all duration-300 relative group overflow-hidden ${activeSection === btn.id
-                                ? 'bg-[#bef264] border-[#bef264] text-black'
-                                : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-[#bef264]/50 hover:text-white'
+                            ? 'bg-[#bef264] border-[#bef264] text-black'
+                            : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-[#bef264]/50 hover:text-white'
                             }`}
                     >
-                        {React.cloneElement(btn.icon as React.ReactElement, { className: "w-4 h-4" })}
+                        {React.cloneElement(btn.icon as React.ReactElement<{ className?: string }>, { className: "w-4 h-4" })}
                         <span className="text-[10px] font-bold uppercase tracking-widest">{btn.label}</span>
                         {activeSection === btn.id && (
                             <motion.div
