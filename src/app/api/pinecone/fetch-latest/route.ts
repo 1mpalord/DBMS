@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { fetchSampleRecord, describeIndex } from '@/lib/pinecone';
 
 export async function GET(req: NextRequest) {

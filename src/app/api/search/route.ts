@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { generateEmbedding } from '@/lib/embeddings';
 import { BM25 } from '@/lib/bm25';

@@ -9,10 +9,12 @@ import { BridgeAnimation } from '@/components/tabs/Introduction/BridgeAnimation'
 import { TokenizationLab } from '@/components/tabs/Embedding/TokenizationLab';
 import { HierarchyDiagram } from '@/components/tabs/Organization/HierarchyDiagram';
 import { HealthCheck } from '@/components/tabs/Organization/HealthCheck';
+import { MultitenancyInfo } from '@/components/tabs/Organization/MultitenancyInfo';
 import { PayloadBuilder } from '@/components/tabs/DataModel/PayloadBuilder';
 import { ResultsCanvas } from '@/components/tabs/Query/ResultsCanvas';
 import { SearchPanel } from '@/components/SearchPanel';
 import { LSMAnimation } from '@/components/tabs/Architecture/LSMAnimation';
+import { DataModelTheory } from '@/components/tabs/DataModel/DataModelTheory';
 import { SystemConsole } from '@/components/SystemConsole';
 import type { TabItem, TabId, VisualNode, SearchResult } from '@/types';
 
@@ -43,6 +45,7 @@ export default function Home() {
   const [showLogic, setShowLogic] = useState(false);
   const [showPerformance, setShowPerformance] = useState(false);
   const [indexSpec, setIndexSpec] = useState<any>(null); // Store full index spec
+  const [dataModelView, setDataModelView] = useState<'demo' | 'theory'>('demo');
 
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -350,6 +353,7 @@ export default function Home() {
                       Within an index, you can partition data into <span className="text-blue-400">Namespaces</span> for multi-tenancy.
                     </p>
                     <HierarchyDiagram />
+                    <MultitenancyInfo />
                   </div>
                   <div className="lg:col-span-1">
                     <HealthCheck />
@@ -357,19 +361,47 @@ export default function Home() {
                 </div>
               )}
               {activeTab === 'data-model' && (
-                <div className="space-y-8">
-                  <div className="max-w-3xl space-y-4">
-                    <h3 className="text-xl font-light text-white">Integrated vs BYO Vectors</h3>
-                    <p className="text-sm text-slate-400">
-                      You can send raw text and let the database embed it (Integrated),
-                      or generate vectors yourself and send them (Bring Your Own).
-                    </p>
+                <div className="space-y-8 flex flex-col h-full">
+                  <div className="flex items-center justify-between border-b border-slate-900 pb-6">
+                    <div className="flex bg-black/40 p-1 rounded-lg border border-slate-800 w-fit">
+                      <button
+                        onClick={() => setDataModelView('demo')}
+                        className={`px-6 py-1.5 text-[10px] uppercase font-bold tracking-widest transition-all rounded ${dataModelView === 'demo' ? 'bg-[#bef264] text-black shadow-lg shadow-[#bef264]/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        Interactive Lab
+                      </button>
+                      <button
+                        onClick={() => setDataModelView('theory')}
+                        className={`px-6 py-1.5 text-[10px] uppercase font-bold tracking-widest transition-all rounded ${dataModelView === 'theory' ? 'bg-[#bef264] text-black shadow-lg shadow-[#bef264]/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        Core Theory
+                      </button>
+                    </div>
+
+                    <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest hidden md:block">
+                      Data_Modeling_V1.4
+                    </div>
                   </div>
-                  <PayloadBuilder
-                    selectedIndex={selectedIndex}
-                    globalNamespace={selectedNamespace}
-                    onNamespaceChange={setSelectedNamespace}
-                  />
+
+                  <div className="flex-1">
+                    <div className={dataModelView === 'demo' ? 'block' : 'hidden'}>
+                      <div className="max-w-3xl space-y-4 mb-8">
+                        <h3 className="text-xl font-light text-white italic">Integrated vs BYO Vectors</h3>
+                        <p className="text-sm text-slate-400">
+                          Configure how your data enters the latent space. Either let the system embed it or provide your own pre-computed vectors.
+                        </p>
+                      </div>
+                      <PayloadBuilder
+                        selectedIndex={selectedIndex}
+                        globalNamespace={selectedNamespace}
+                        onNamespaceChange={setSelectedNamespace}
+                      />
+                    </div>
+
+                    <div className={dataModelView === 'theory' ? 'block' : 'hidden'}>
+                      <DataModelTheory />
+                    </div>
+                  </div>
                 </div>
               )}
               {activeTab === 'query' && (

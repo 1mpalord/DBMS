@@ -1,8 +1,17 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY || 'placeholder',
-});
+let pineconeInstance: Pinecone | null = null;
+
+const getPineconeClient = () => {
+  if (!pineconeInstance) {
+    const apiKey = process.env.PINECONE_API_KEY;
+    if (!apiKey) {
+      throw new Error('PINECONE_API_KEY is not defined');
+    }
+    pineconeInstance = new Pinecone({ apiKey });
+  }
+  return pineconeInstance;
+};
 
 const indexName = process.env.PINECONE_INDEX_NAME || 'vector-demo';
 
@@ -11,7 +20,7 @@ export const getIndex = (name?: string) => {
     console.warn('PINECONE_API_KEY is not defined. Vector operations will fail.');
     return null;
   }
-  return pinecone.index(name || indexName);
+  return getPineconeClient().index(name || indexName);
 };
 
 export const listIndexes = async () => {
@@ -20,7 +29,7 @@ export const listIndexes = async () => {
     return { indexes: [{ name: 'sim-index-alpha' }, { name: 'sim-index-beta' }] };
   }
   console.log('📡 [Pinecone] Fetching indexes from control plane...');
-  const indexes = await pinecone.listIndexes();
+  const indexes = await getPineconeClient().listIndexes();
   console.log('✅ [Pinecone] Retrieved indexes:', indexes);
   return indexes;
 };
@@ -30,12 +39,12 @@ export const ensureIndex = async (name?: string, options?: { dimension?: number,
   const target = name || indexName;
 
   try {
-    const indexes = await pinecone.listIndexes();
+    const indexes = await getPineconeClient().listIndexes();
     const exists = indexes.indexes?.some(idx => idx.name === target);
 
     if (!exists) {
       console.log(`⚠️ [Pinecone] Index '${target}' not found. Initiating creation sequence...`);
-      await pinecone.createIndex({
+      await getPineconeClient().createIndex({
         name: target,
         dimension: options?.dimension || 384,
         metric: options?.metric || 'cosine',
@@ -59,7 +68,7 @@ export const ensureIndex = async (name?: string, options?: { dimension?: number,
 export const describeIndex = async (name: string) => {
   if (!process.env.PINECONE_API_KEY) return null;
   try {
-    const description = await pinecone.describeIndex(name);
+    const description = await getPineconeClient().describeIndex(name);
     return description;
   } catch (error) {
     console.error(`Error describing index ${name}:`, error);
@@ -70,7 +79,7 @@ export const describeIndex = async (name: string) => {
 export const deleteIndex = async (name: string) => {
   if (!process.env.PINECONE_API_KEY) return;
   try {
-    await pinecone.deleteIndex(name);
+    await getPineconeClient().deleteIndex(name);
     console.log(`🗑️ [Pinecone] Index '${name}' deleted.`);
   } catch (error) {
     console.error(`Error deleting index ${name}:`, error);
@@ -81,7 +90,7 @@ export const deleteIndex = async (name: string) => {
 export const getNamespaceStats = async (indexName: string) => {
   if (!process.env.PINECONE_API_KEY) return {};
   try {
-    const idx = pinecone.index(indexName);
+    const idx = getPineconeClient().index(indexName);
     const stats = await idx.describeIndexStats();
     return stats.namespaces || {};
   } catch (error) {
@@ -93,7 +102,7 @@ export const getNamespaceStats = async (indexName: string) => {
 export const fetchSampleRecord = async (indexName: string, namespace: string) => {
   if (!process.env.PINECONE_API_KEY) return null;
   try {
-    const idx = pinecone.index(indexName).namespace(namespace);
+    const idx = getPineconeClient().index(indexName).namespace(namespace);
     // Heuristic: Query to find *any* record
     const results = await idx.query({
       vector: Array(384).fill(0.1), // Assumes 384 dim, but query works regardless of dim mismatch usually? No it throws.
@@ -122,10 +131,10 @@ export const upsertRecord = async (
 ) => {
   if (!process.env.PINECONE_API_KEY) return;
   try {
-    const idx = pinecone.index(indexName).namespace(namespace);
+    const idx = getPineconeClient().index(indexName).namespace(namespace);
 
     // 1. Get index dimension to match vector (required to avoid error)
-    const details = await pinecone.describeIndex(indexName);
+    const details = await getPineconeClient().describeIndex(indexName);
     const dimension = details.dimension || 384;
 
     // 2. Use provided embedding OR generate dummy
@@ -162,7 +171,7 @@ export const upsertRecords = async (
 ) => {
   if (!process.env.PINECONE_API_KEY) return;
   try {
-    const idx = pinecone.index(indexName).namespace(namespace);
+    const idx = getPineconeClient().index(indexName).namespace(namespace);
 
     // Pinecone allows up to 1000 records per upsert request
     // We send them as is, assuming values are already provided (embedded)
@@ -178,7 +187,7 @@ export const upsertRecords = async (
 export const deleteNamespace = async (indexName: string, namespace: string) => {
   if (!process.env.PINECONE_API_KEY) return;
   try {
-    const idx = pinecone.index(indexName).namespace(namespace);
+    const idx = getPineconeClient().index(indexName).namespace(namespace);
     await idx.deleteAll();
     console.log(`🗑️ [Pinecone] Namespace '${namespace}' deleted in index '${indexName}'.`);
     return true;

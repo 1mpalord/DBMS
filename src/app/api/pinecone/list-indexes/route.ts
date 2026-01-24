@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { listIndexes } from '@/lib/pinecone';
 
 export async function GET() {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pinecone } from '@pinecone-database/pinecone';
 
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || 'placeholder' });
     const searchParams = req.nextUrl.searchParams;
     const indexName = searchParams.get('indexName');
     const namespace = searchParams.get('namespace') || '';
