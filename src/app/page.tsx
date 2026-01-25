@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Layers, Binary, FolderTree, Database, Search, Cpu, Component } from 'lucide-react';
+import { Layers, Binary, FolderTree, Database, Search, Cpu, Component, Users } from 'lucide-react';
 import { TabNav } from '@/components/shared/TabNav';
 import { GlassPanel } from '@/components/shared/GlassPanel';
 import { BridgeAnimation } from '@/components/tabs/Introduction/BridgeAnimation';
@@ -15,11 +15,13 @@ import { ResultsCanvas } from '@/components/tabs/Query/ResultsCanvas';
 import { SearchPanel } from '@/components/SearchPanel';
 import { LSMAnimation } from '@/components/tabs/Architecture/LSMAnimation';
 import { DataModelTheory } from '@/components/tabs/DataModel/DataModelTheory';
+import { TeamIntroContainer } from '@/components/tabs/TeamIntro/IntroContainer';
 import { SystemConsole } from '@/components/SystemConsole';
 import type { TabItem, TabId, VisualNode, SearchResult } from '@/types';
 
 // Tab Configuration
 const TABS: TabItem[] = [
+  { id: 'team-intro', label: '00_Team_3', icon: <Users className="w-4 h-4" /> },
   { id: 'introduction', label: '01_Introduction', icon: <Layers className="w-4 h-4" /> },
   { id: 'embedding', label: '02_Embedding', icon: <Binary className="w-4 h-4" /> },
   { id: 'organization', label: '03_Log_Org', icon: <FolderTree className="w-4 h-4" /> },
@@ -29,7 +31,7 @@ const TABS: TabItem[] = [
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>('introduction');
+  const [activeTab, setActiveTab] = useState<TabId>('team-intro');
   const [selectedIndex, setSelectedIndex] = useState<string>('vector-demo');
 
   // Global Multi-Tenancy State
@@ -218,6 +220,9 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="absolute inset-0"
             >
+              {activeTab === 'team-intro' && (
+                <TeamIntroContainer />
+              )}
               {activeTab === 'introduction' && (
                 <div className="space-y-8">
                   <div className="max-w-3xl space-y-4">

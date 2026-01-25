@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { TimerProvider } from "@/context/TimerContext";
+import { TimerDisplay } from "@/components/shared/TimerDisplay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <TimerProvider>
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <TimerDisplay />
+          </div>
+          {children}
+        </TimerProvider>
       </body>
     </html>
   );

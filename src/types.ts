@@ -1,4 +1,5 @@
 export type TabId =
+    | 'team-intro'
     | 'introduction'
     | 'embedding'
     | 'organization'
