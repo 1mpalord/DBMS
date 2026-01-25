@@ -7,40 +7,67 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Sub-components for Visuals ---
 
-function ParticleVisual({ type }: { type: 'dense' | 'sparse' }) {
-    const particles = Array.from({ length: type === 'dense' ? 40 : 8 });
+function DimensionalMatrix({ type }: { type: 'dense' | 'sparse' }) {
+    const [cells, setCells] = React.useState<number[]>([]);
+
+    React.useEffect(() => {
+        // Generate a 100-dimension vector (10x10 grid)
+        const dimCount = 100;
+        let newCells: number[] = [];
+
+        if (type === 'dense') {
+            // Dense: Most dimensions have a non-zero value (represented by opacity 0.2 - 1.0)
+            newCells = Array.from({ length: dimCount }).map(() => Math.random() * 0.8 + 0.2);
+        } else {
+            // Sparse: Most dimensions are 0. Only ~5% are active.
+            newCells = new Array(dimCount).fill(0);
+            const activeIndices = new Set();
+            while (activeIndices.size < 5) {
+                activeIndices.add(Math.floor(Math.random() * dimCount));
+            }
+            activeIndices.forEach(idx => {
+                newCells[idx as number] = 1.0;
+            });
+        }
+        setCells(newCells);
+    }, [type]);
 
     return (
-        <div className="relative h-32 w-full bg-black/40 border border-slate-800 rounded-sm overflow-hidden flex items-center justify-center">
-            <div className="absolute inset-0 opacity-20 bg-grid-white/[0.02]" />
-            <div className="relative w-full h-full">
-                {particles.map((_, i) => (
+        <div className="relative w-full bg-black/40 border border-slate-800 rounded-sm overflow-hidden flex flex-col items-center justify-center py-6">
+
+            {/* The Matrix (10x10 Grid) */}
+            <div className="grid grid-cols-10 gap-1 p-4 bg-black/20 rounded border border-slate-800/50">
+                {cells.map((opacity, i) => (
                     <motion.div
                         key={i}
-                        className={`absolute rounded-full ${type === 'dense' ? 'bg-[#bef264]/40 w-1 h-1' : 'bg-blue-400 w-2 h-2 shadow-[0_0_8px_rgba(96,165,250,0.6)]'}`}
-                        initial={{
-                            x: Math.random() * 100 + '%',
-                            y: Math.random() * 100 + '%',
-                            opacity: Math.random()
-                        }}
-                        animate={type === 'dense' ? {
-                            x: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
-                            y: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
-                            opacity: [0.2, 0.8, 0.2]
-                        } : {
-                            scale: [1, 1.5, 1],
-                            opacity: [0.3, 1, 0.3]
+                        className={`w-1.5 h-1.5 rounded-sm ${type === 'dense' ? 'bg-[#bef264]' : 'bg-blue-400'}`}
+                        initial={{ opacity: 0 }}
+                        animate={{
+                            opacity: type === 'dense'
+                                ? [opacity, opacity * 0.5, opacity] // Subtle shift for dense
+                                : opacity === 0 ? 0.05 : [1, 0.5, 1] // Pulse active ones for sparse
                         }}
                         transition={{
-                            duration: type === 'dense' ? Math.random() * 5 + 3 : 2,
+                            duration: 2 + Math.random() * 2,
                             repeat: Infinity,
-                            ease: "linear"
+                            delay: Math.random()
                         }}
                     />
                 ))}
             </div>
+
             <div className="absolute bottom-2 right-2 text-[9px] font-mono text-slate-500 uppercase">
-                {type}_retrieval_mode
+                {type}_vector_space [100_DIMS]
+            </div>
+
+            {/* Legend/Status */}
+            <div className="flex gap-4 mt-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-600 font-mono">ACTIVE:</span>
+                    <span className={`text-xs font-bold font-mono ${type === 'dense' ? 'text-[#bef264]' : 'text-blue-400'}`}>
+                        {type === 'dense' ? '~100%' : '~5%'}
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -178,14 +205,14 @@ export function MultitenancyInfo() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-4">
                                             <div className="text-[10px] text-slate-400 font-mono uppercase tracking-widest border-l-2 border-[#bef264] pl-2">Dense_Concept</div>
-                                            <ParticleVisual type="dense" />
+                                            <DimensionalMatrix type="dense" />
                                             <p className="text-[11px] text-slate-500 leading-relaxed italic">
                                                 Used for deep semantic understanding where most dimensions carry value.
                                             </p>
                                         </div>
                                         <div className="space-y-4">
                                             <div className="text-[10px] text-slate-400 font-mono uppercase tracking-widest border-l-2 border-blue-400 pl-2">Sparse_Token</div>
-                                            <ParticleVisual type="sparse" />
+                                            <DimensionalMatrix type="sparse" />
                                             <p className="text-[11px] text-slate-500 leading-relaxed italic">
                                                 Highly specific keyword retrieval where only a few features are active.
                                             </p>
